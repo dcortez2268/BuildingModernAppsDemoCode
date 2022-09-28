@@ -1,0 +1,193 @@
+request offloading: allows you to respond to client without process being completely done yet 
+
+s3 select API: feature of s3 that allows you to read a subset of data from s3 using SQL queries, helps save on computing costs and cheaper than downloading whole object
+
+AWS systems manager parameter store: allows you to store key values pairs that are user defined, acts as a external resource file to store hard coded strings, secrets, and config data management
+
+every AWS service has an API and you can use the command line or the SDK to interact with those APIs
+
+// AWS is service
+var AWS = require('aws-sdk')
+const s3 = new AWS.S3({
+    region: 'us-east-1'
+});
+client classes: static classes of AWS (service), S3 is client class
+
+service objects: insantiated objects from client constructor, has methods to make calls from client classes, which call the AWS apis for you, 
+s3 is service object
+
+CREDENTIALS:
+each api call needs key credentials, if you are using cloud9 it is configured with credentials
+the SDK looks for credentials in the following order:
+service client constructor,
+environment variables,
+shared credentials file,
+amazon ECS credentials provider,
+preferred: IAM role, configure role for ec2 instance, container task, or lambda function,
+
+temporary credentials: Cloud9 automatically creates managed temporary credentials when its managed on an ec2 instance, has all permissions the current iam user has
+can be disabled in preferences, then have to provide credentials by providing role for ec2 instance, add access key and secret key manually via CLI
+
+serverless application: combination of Lambda functions, event resources, and other resources that work together to perform your distributed tasks
+
+SAM, aws serverless application model: framework for building serverless applications, extension of Cloudformation
+features:
+shorthand syntax to express functions, APIs, databases, and more, then translates to Cloudformation template during deployment
+integrates with AWS tools for building serverless applications
+
+SAM Template specification: allows us to define the serverless application
+SAM CLI: tools that allows us to build the applications defined by SAM template
+
+benefits:
+helps you organize related components and resources and operate on a single stack
+allows you to use and enforce best practices such as code reviews
+allows you to test and deploy the same environment
+
+
+
+APIS:
+
+API driven development: When creating a new service, the first artifact we build id the API
+benefits:
+back end and front end can be built in parallel once api is complete
+allows us to provide a modular design 
+aids in documentation because specifications need to be defined clearly
+
+Websocket APIs: use low level protocols based on socket imports and requires use of IP addresses and port information, stateful, used for applications that need real time data or real time communication
+HTTP APIs: enable you to create restful APIs with lower latency and lower costs than REST APIs, are used to proxy backend resources
+REST APISs: fast, stateless, standard, horizontally scalable, and dependable, uses HTTPS, allows you to have full control over requests and responses between client and API gateway, 
+    collection of resources and methods that are integrated with backend HTTP endpoints, Lambda function, or other AWS services
+
+API Gateway: allows you to build and manage Rest, HTTP, and websocket APIS at any scale.
+Features and benefits:
+canary release deployments for safety, rolling out changes, logging and mointoring through Cloud trail and Cloudwatch, 
+support for custom domain names, throttling of requests, and direct integration with other services such as WAF, X-RAY, and Lambda,
+provides multiple endpoint types you can utilize
+endpoint types: 
+    edge optimized: best for geographically distributed clients, default type
+    regional: intended for clients in same region,
+    private: allow a client secure access to resources inside a VPC
+
+resource: abstract concept that allows you to expose something to be consumed by a client 
+integration type: backend that API sits in front of
+
+Models and Mapping: API gateway REST Apis provide a way to validate incoming requests against models and data can be transformed in shape by using mappings
+
+models: define the structure or shape of the payload of the request, use JSON schemas
+    different methods could have different models
+mappings: are applied to the integrations request and integration response of your API.  
+    different methods could have different mappings
+    written in VTL, or Velocity Template language, 
+    stage variables: api gateway has default variables that are appended with $ to access
+
+client => method request => integration request => integration type (backend) => integration response => method response => client :
+
+method request: performs validation against models, can validate request parameters in URI, query string, and headers OR validate the payload adheres to model
+integration request: performs mapping if needed
+integration response: performs mapping if needed to encapuslate into HTTP wrapper
+Method response: returns data from integration response to client,
+ performs validation against models, can validate request parameters in URI, query string, and headers OR validate the payload adheres to model
+
+
+ API deployment:
+ deployment: must be created before a client can call your API and has an associated stage
+ 
+ stage: is a reference to a deployment, or snapshot.  Helps you manage and optimize a particular deployment. every time you make a change to your api, you must deploy to a stage for it to go live. 
+    provide: method for deployment, api versioning, performance management, and sdk generation
+ 
+ stage variables: configuration attributes associated with a deployment stage.  they act like environment variables and can be used in your api setup and mapping templates.  Essentially they allow you to pass different variables for different methods to API backend, (integration)
+
+ deployment resource: instantiated when you create deployment and is similar to an executable of an API.
+
+ 
+API Authentication:
+types authorization and authentication depend on API type
+REST API authentication and authorization: 
+IAM, Lambda, and Amazon Cognito user pools
+
+IAM:
+Under the stages tab, you can generate an sdk for different platforms.  typically used for server to server communication.  
+attach an IAM role for your code to get authenticated.  
+
+for native APIs you can add authentication and authorization via an access key and a secret key, the AWS SDK does it for you when making calls to AWS APIs, 
+
+Cognito:
+create pool then add in authorizers tab of API gateway.  web and mobile applications are authorized by cognito to make calls to api.
+what is cognito?:
+made up of two services, user pool and identity pool.  They can work together or individually.
+user pool:  
+identity provider, which is a user directory.  You can sign up users with e-mail or phone number validation, sign in, reset passwords, and perform MFA.  
+Steps to authentication:
+Client authenticates with Cognito user pool and gets JWT.  AWS created web pages for this workflow which you can customize.  
+Client sends request to API gateway with JWT.
+API validates the JWT with request to Cognito user pool.  Gateway then sends request to backend once the JWT has been validated
+
+Can also be authenticated via federation, which means authenticating via a third party
+Client authenticates with OIDC, SAML, or social providers and gets token
+client sends request to cognito user pool with token
+cognito user pool validates the token with OIDC, SAML, or social media platform. saves user info, then sends response to client with JWT token
+client sends request to api gateway with jwt
+gateway validates the JWT and then sends request to backend
+identity pool (federated identities): 
+allows us to assign IAM roles to users who authenticate through a separate identity provider, either OIDC, SAML, social media platform, or USER POOL 
+contains a built in rule engine that allows you to select a specific iam role based on the data provided by the identity provider you are using
+unauthenticated identity allows you to give default iam role for anyone that doesn't have credentials to authenticate
+USE identity pool or user pool directly for authorization?:
+use user pool when you only need to communicate with API gateway and you want your backend to have more information about user
+use identity pool when you need to communicate with almost any other aws services directly
+Triggers:
+specify your own code to launch for pretty much any piece of workflow when it touches user pool. ex:you could run code to add user to database when they sign up
+app client: the definition of the application that is going to use Cognito user pool as their database of users. 
+
+Lambda authorizers: request parameters from client to gateway are sent to lambda, lambda returns a principle and a policy
+principle: definition of this user obtained through authorization code in lambda
+policy: like an IAM policy, that defines what the user can do
+Gateway then authorizes the request and sends a 403 back to client if denied and sends request to backend if allows
+
+
+access controls: 
+many types, they are additions to authentication and authorization and you can combine many of them.  they include... 
+resource policies applied at an gateway endpoint, endpoint policies for interface VPC endpoint, CORS, WAF, client side SSL certificate, and usage plans with API keys
+client side: all are client side, besides client side SSL certificate
+
+CORS: cross-origin resource sharing, browser security feature that restricts cross origin HTTP requests that are running in the browser,
+headers specify which requests can be made from which url, 
+cross-origin HTTP requests: whenever the url in browser is different than the url in script
+
+AWS WAF: web application firewall that helps protect your API from common web exploits.  Has rules for managing top 10 security risks.  It can also be configured to filter any requests based on HTTP headers, IP address, or HTTP body.
+
+usage plans: allows customers to access selected APIs at agreed upon request rates and quotas by implementing the creation of a key and the client inserts the api key as the value of the HTTP header X-API key 
+
+Resource policies: allows you to create resource based policies to allow or deny access to your APIs and methods using iam condition elements. 
+
+VPC endpoint policy: to access a private API from a VPC, you must implement a VPC interface endpoint.  The endpoints are powered by AWS private link, which enables you to privately access aws services by using private ip addresses.  You can add a policy for the VPC endpoint that allows or denies permissions for the API.  
+
+
+HTTP APIs authentication and authorization:
+JSON Web Tokens, (JWT), or JWT that are part of the openID Connect on OAuth2.0 protocols, or Amazon Cognito user pools because they use JWT as well
+authorization scopes: allow you to further restrict certain routes to privilege users, they are like strings in the identity provider that provide access to route
+
+
+//**************************************:
+AWS LAMBDA:
+//**************************************:
+
+event: JSON formatted document that contains data for a function to process
+concurrency: number of requests that your function is serving at any given time
+trigger: resource or configuration that invokes a lambda function
+    event source mapping: resource in lambda that reads items from a queue and invokes a function,
+    aws services configured to invoke a function, and apps
+
+Lambda function permissions:
+execution permissions and resource-based policies
+
+execution permissions: 
+define what your lambda functions can do,
+do not embed credentials into lambda execution environment
+use role based access
+also needs basic execution permissions in order to do things like posting logs in cloudwatch, AWSLambdaBasicExecutionRole
+resource based policies:
+define what can invoke or manage your lambda function
+you can allow or deny certain entities from interacting with your lambda function
+
+
