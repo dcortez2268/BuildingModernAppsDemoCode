@@ -183,11 +183,77 @@ execution permissions and resource-based policies
 
 execution permissions: 
 define what your lambda functions can do,
-do not embed credentials into lambda execution environment
-use role based access
+use IAM role based access, do not embed credentials into lambda execution environment
 also needs basic execution permissions in order to do things like posting logs in cloudwatch, AWSLambdaBasicExecutionRole
 resource based policies:
-define what can invoke or manage your lambda function
+define who can invoke or manage your lambda function
 you can allow or deny certain entities from interacting with your lambda function
+
+
+Push and Pull Models for invoking Lambda:
+Push: 
+When a trigger sends an event to lambda
+The resource based policy for Lambda must explicitly allow the invocation.
+The call is made either asynchronously or synchronously, usually determined by the service, but sometime you can decide
+    asynchronous call:
+    performs asynchronous call when a response is not expected, like with batch jobs
+        error handling: incoming events are placed in the queue before being sent to the actual fn, if the fn returns an error to lambda service then lambda will retry fn twice by default or keep event kept in the queue for a certain time period.  If either are reached, then you can have error sent to DLQ, or Lambda destinations
+            DLQ: 
+            holds results from error in SQS or sends to SNS topic
+            Lambda destinations:
+            something to notify after an asynchronous invocation did or did not work
+
+    synchronous call:
+    performs synchronous call when a response is expected, like with REST APIs
+        error handling: you'll know if there was an error by response
+
+Pull:
+Lambda the service pulls events from event sources, and then invokes your lambda function. 
+The event source mapping allows you to configure how lambda the service pulls the queue or stream, then delivers them to lambda function.
+The execution permission must explicitly allow the appropriate allowed API calls
+
+
+Lambda Execution Context Reuse:
+
+execution context: 
+code and objects declared outside the handler method, like imports etc
+cold start: 
+there is added latency when a function is executed because execution context needs to be "bootstrapped" 
+warm start: 
+after a function is executed, lambda maintains the execution context for 15 mins, "warming" the context for reuse so reduced latency when called again because context is reused
+After 15 mins, lambda will terminate the execution context, and if called again will need to be bootstrapped again
+provisioned concurrency:
+feature that allows you to launch the amount of execution contexts you have specified and will keep them warm for you.  can be less expensive than running a Lambda on demand if you are using that capacity you reserved.
+
+
+Compliance with AWS Lambda:
+
+For encryption for data in flight: 
+Lambda API endpoints only support secure connections over HTTPS
+For encryption 
+When modifying Lambda resources:
+TLS is used for console, SDK, or API
+For encryption for data at rest:
+environment variables are stored within Lambda and encrypted
+you can customize the encryption via key config and encryption helpers (client-side)
+Elastic Network Interface, ENI: 
+allows your lambda functions to access resources inside a VPC, while keeping the resources protected.  You tell Lambda which resources you need to connect to, and it does the rest.
+
+
+Aliases and Versions:
+
+Versions: 
+help manage the deployment of functions, enabling the baility to publish a new version of a function for testing, without affecting stable prod version
+with every version there are two ARNS, (references), one that points to the published fn and another that points to the copy
+includes:
+code and dependencies,  runtime, setting and env variables, and ARN
+
+alias: 
+like a pointer to a specific lambda function version,
+has ARN that is a reference to alias
+very helpful when you have a trigger that points to lambda fn, and every time you make a change it would require you to change event mapping for that trigger, however with aliases you can keep the same ARN in the event mappings and modify the alias point to newest lambda version
+
+
+
 
 
