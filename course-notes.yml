@@ -422,7 +422,6 @@ default setting, only traced if xray has been enabled on an upstream service.  t
 
 API Gateway with Lambda:
 supports active and passive tracing as well 
-
 X-Ray SDK:
 library that provides functionality for creating and sending trace data to the X-Ray Daemon
 x-ray daemon:
@@ -434,19 +433,19 @@ include statements is all that's needed in code
 
 Cloudwatch Logs Integration with API Gateway, Step Functions, and Lambda:
 Cloudwatch log event:
-record of some activity recorded by service or resource being monitored.  Contains timestamp and raw event message
+record of some activity recorded by service or resource being monitored.  Contains timestamp and data
 log stream:
 sequence of log events that share the same source.  generally one log stream per service instance
 log group:
 group of log streams that can share the same retention monitoring or access control settings.  ex for lambda you would have one log group per execution context
 retention settings:
-may want to modify amount of time to store logs because logs cost money to store
+specify how long logs are kept. logs can cost money to store
 
 all require role to send logs to cloudwatch log
 how Lambda implements storing logs:
-very simple, each lambda function comes with log group configuration and log stream.  Runtime sends details about each invocation to the log stream.
+very simple, apply AWSLambdaBasicExecutionRole and logs will be enabled and could also use console.log to output data from code
 how API gateway implements storing logs:
-execution logging:allows you to see the traffic in and out of your API, api gateway manages everything about cloudwatch logs 
+execution logging:allows you to see the traffic in and out of your API, api gateway manages  cloudwatch logs 
 access logging:only available for rest api, more extensive, entails logging who has access to API and how caller accessed api, what it found from request after logging or transforming request
 how step functions implements storing logs:
 express workflows:configured by default
