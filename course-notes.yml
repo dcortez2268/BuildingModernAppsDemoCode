@@ -246,12 +246,211 @@ Versions:
 help manage the deployment of functions, enabling the baility to publish a new version of a function for testing, without affecting stable prod version
 with every version there are two ARNS, (references), one that points to the published fn and another that points to the copy
 includes:
-code and dependencies,  runtime, setting and env variables, and ARN
+code and dependencies,  runtime setting and env variables, and ARN
 
 alias: 
 like a pointer to a specific lambda function version,
 has ARN that is a reference to alias
 very helpful when you have a trigger that points to lambda fn, and every time you make a change it would require you to change event mapping for that trigger, however with aliases you can keep the same ARN in the event mappings and modify the alias point to newest lambda version
+
+
+
+//**************************************:
+AWS STEP FUNCTIONS:
+//**************************************:
+
+What is it?:
+serverless workflow tool that allows you to create a state machine that consists of one or many states
+keeps track of the state of state machine and a history of executions of state machine
+logs the state of each step so that you have the ability to debug
+allows us to build loosely coupled system rather than having lambda functions be tightly coupled
+state machine:
+workflow, or collection of states which allow you to perform the work in sequence, passing the output of one worker as the input of another
+state: 
+individual elements of state machine, must have unique name
+tasks:
+workers, help your states accomplish their work
+
+Step Function State Types:
+task: do some work in your state machine
+choice: make a choice between branches of execution
+fail or succeed state: stop an execution with a failure or a success
+pass: pass its input to its output or inject some fixed data, also for debugging
+wait: provide a delay for a certain amount of time
+parallel: begin parallel branches of execution
+map: dynamically iterate steps
+
+all besides fail state have full control over input and output.  
+path: "$.variableName" is how you pull variables value from payload of JSON text in state machine
+
+
+Step Function Service Integrations:
+AWS Step Functions integrates with some AWS services so that you can call API actions, and coordinate executions directly from the States Language in step functions.  You can directly call and pass parameters to the APIs of those services.
+
+Simply invoke with a task state.  Can integrate with many features and do some of the following:
+invoke lambda function
+run an aws batch job and then perform different actions based on the results
+insert or get item from DynamoDB
+run an ecs task and wait for it to complete 
+publish to a topic in SNS
+send a message in SQS
+Manage a job for glue or sageMaker
+execute EMR jobs
+launch another step functions workflow
+
+Patterns:
+async:
+send request to a service, progress to next state immediately after it gets HTTP response
+callback tasks(synchronous):
+call a service and have step functions wait for a job to complete 
+call a service with a task token and wait until that token is returned with a payload
+
+
+activity worker:
+any external compute
+activity task state type: 
+task that gets performed by code running somewhere externally, like EC2
+create an activity, which is like queue of tasks, and point to it in state
+worker sends request to task, and task sends response with taskToken
+worker needs to send periodic heartbeat until done, otherwise task will fail
+when done, worker sends SendTaskSuccess or SendTaskFailure with response
+
+
+Standard vs Express state functions:
+standard and express are the two different workflows for state machine
+express workflow:
+ideal for high-volume, event-processing workloads such as IOT data ingestion, streaming data processing and transformation, and mobile application backends
+over 100000 per second executions
+nearly unlimited state transitions
+does not persist state transitions to disk, only keeps them in memory
+each state will run at least once, bc if there is issue it will have to restart entire machine
+prices by number of executions you run, duration, and memory consumption
+maximum duration is 5 minutes
+execution history is sent to amazon cloudwatch logs
+does not support job run or callback patterns, basically only supports asynchronous calls
+standard workflow:
+ideal for long-running, durable, and auditable workflows
+over 2000 per second executions
+over 4000 per second per account
+each state transition is persisted to disk
+each state will run only once, bc if there is issue it will restart execution at last state 
+priced per state transition
+maximum duration is 1 year
+you can use console to see execution history or send to amazon cloudwatch logs
+supports all service integrations and patterns
+
+Best practices for step functions:
+use timeouts to avoid stuck executions
+use ARNS for s3 instead of passing large payloads
+Handle Lambda Service exceptions
+Avoid latency when polling for activity tasks
+choose correctly between standard or express workflows
+
+
+Event driven architectures:
+uses events to trigger and communicate between decoupled services.  
+
+event: 
+change in state or an update.  Events can carry state or can be identifier, things that are sent as notification.  
+producer:
+publishes event to the event router
+consumer:
+receives the event from event router
+event router:
+pushes events to consumer
+
+Services that act as routers:
+step functions, SQS, SNS, EventBridge
+SQS:
+message queieng service that allows you to build loosely coupled systems and allows component to component communication using messages,
+consumers poll the SQS queue regularly to see if there are messages in the queue
+two types of queues:
+standard:offers a maximum throughput that is unordered.  At least once processing.
+FIFO:processed only once and in fifo order.
+SNS:
+it allows you to send emails and text messages from your applications and allows you to publish messages to a topic, which are endpoints
+notify consumers that something was sent by a producer
+Event Bridge Service:
+service bus that helps to connect consumers and producers easily by implementing a predefined schema
+maps schema to code so easy to work with inside your code
+Schema Registry:a central repo, helps the producer tell the consumer what the schema look like
+
+
+
+
+//**************************************:
+Monitoring, Logging, observability:
+//**************************************:
+
+Monitoring: act of collecting data. we collect metrics, logs, watch network traffic, send alerts when something seems off.  
+
+observability: 
+allows you to measure how well the internal workings of a system are from the outputs of that system.  A system with high observability is desireable.  
+provides a ssytem with a tight feedback look
+how to implement: 
+use distributed tracing software.  It alllows you to collect data on API calls made between components and measure the performance of each individual service and measure latency of the system as a whole.  
+
+
+AWS X-Ray:
+helps you analyze and debug distributed applications, such as those built using a microservices architecture,
+high level of visibility allows you to identify and troubleshoot the root cause of performance issues and errors
+provides a map of application's underlying components and a map of end to end requests as they travel through your application
+implementation:
+collects and records traces, which allows you to see service map with trace data.  This help you to identify any issues.
+segments:
+compute resources running your application logic, such as resource's name, details about requests and work done
+subsegments:
+provide more granular details such as timing information and downstreams calls by an app, you can add specific custom subsegments around certain lines of code
+service graph:
+JSON document that contains information about services and resources that make up your app. console uses this to generate service map
+trace:
+allows us to track the path of a request through app.  It collects all the segments generated by a single request.
+integrations with other services:
+if there is not integration with select service, x-ray provides inferred segments, but if there is integration then the service will provide segment
+API gateway supports active tracing to analyze user requests
+Lambda runs x-ray damon to records a segment about function invocation and execution
+cloudtrail records api actions made by a user role or an aws service 
+cloudwatch supports cloudwatch service lens and synthetics to monitor health of application
+many more...
+
+API Gateway with X-ray:
+two types of tracing: active and passive
+active tracing:
+api gateway will automatically sample all api invocation requests based on sampling algorithm set in x-ray
+passive tracing:
+default setting, only traced if xray has been enabled on an upstream service.  tracing  will only capture upstream sampling
+
+API Gateway with Lambda:
+supports active and passive tracing as well 
+
+X-Ray SDK:
+library that provides functionality for creating and sending trace data to the X-Ray Daemon
+x-ray daemon:
+process that runs on a host machine that gathers raw trace segments and then periodically uploads that data to the x-ray API
+implementation:
+install dependencies
+include statements is all that's needed in code
+
+
+Cloudwatch Logs Integration with API Gateway, Step Functions, and Lambda:
+Cloudwatch log event:
+record of some activity recorded by service or resource being monitored.  Contains timestamp and raw event message
+log stream:
+sequence of log events that share the same source.  generally one log stream per service instance
+log group:
+group of log streams that can share the same retention monitoring or access control settings.  ex for lambda you would have one log group per execution context
+retention settings:
+may want to modify amount of time to store logs because logs cost money to store
+
+all require role to send logs to cloudwatch log
+how Lambda implements storing logs:
+very simple, each lambda function comes with log group configuration and log stream.  Runtime sends details about each invocation to the log stream.
+how API gateway implements storing logs:
+execution logging:allows you to see the traffic in and out of your API, api gateway manages everything about cloudwatch logs 
+access logging:only available for rest api, more extensive, entails logging who has access to API and how caller accessed api, what it found from request after logging or transforming request
+how step functions implements storing logs:
+express workflows:configured by default
+standard workflows:enable logging manually, has its own log history available for 90 days within console or you can send to cloudwatch logs
 
 
 
